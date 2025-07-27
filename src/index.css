@@ -1,0 +1,261 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Blockchain Academic System Design System
+   Colors: White, Blue, Black with gradient accents
+   All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Light mode blockchain theme */
+    --background: 0 0% 100%;
+    --foreground: 218 100% 4%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 218 100% 4%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 100% 4%;
+    
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 220 100% 75%;
+    
+    --secondary: 220 15% 95%;
+    --secondary-foreground: 218 100% 4%;
+    
+    --muted: 220 15% 95%;
+    --muted-foreground: 215 25% 45%;
+    
+    --accent: 217 91% 95%;
+    --accent-foreground: 217 91% 25%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
+    
+    --radius: 0.75rem;
+    
+    /* Blockchain specific colors */
+    --blockchain-blue: 217 91% 60%;
+    --blockchain-blue-dark: 217 91% 45%;
+    --blockchain-blue-light: 220 100% 85%;
+    --blockchain-success: 142 76% 36%;
+    --blockchain-warning: 38 92% 50%;
+    --blockchain-danger: 0 84% 60%;
+    
+    /* Enhanced 3D Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(220 100% 75%) 50%, hsl(217 91% 45%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(220 15% 95%) 50%, hsl(220 20% 90%) 100%);
+    --gradient-accent: linear-gradient(45deg, hsl(217 91% 60%) 0%, hsl(142 76% 36%) 50%, hsl(280 100% 70%) 100%);
+    --gradient-background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 15% 98%) 50%, hsl(217 91% 95%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 60% / 0.1) 0%, hsl(280 100% 70% / 0.1) 25%, hsl(142 76% 36% / 0.1) 50%, hsl(220 100% 75% / 0.1) 75%, hsl(217 91% 60% / 0.1) 100%);
+    
+    /* Shadows */
+    --shadow-soft: 0 2px 8px hsl(217 91% 60% / 0.1);
+    --shadow-medium: 0 4px 16px hsl(217 91% 60% / 0.15);
+    --shadow-strong: 0 8px 32px hsl(217 91% 60% / 0.2);
+    --shadow-glow: 0 0 32px hsl(217 91% 60% / 0.3);
+    
+    /* Animation */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark mode blockchain theme */
+    --background: 218 100% 4%;
+    --foreground: 0 0% 98%;
+    
+    --card: 220 15% 8%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 220 15% 8%;
+    --popover-foreground: 0 0% 98%;
+    
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 220 100% 75%;
+    
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 220 15% 15%;
+    --muted-foreground: 215 25% 65%;
+    
+    --accent: 217 91% 15%;
+    --accent-foreground: 217 91% 75%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 217 91% 60%;
+    
+    /* Enhanced Dark 3D Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(220 100% 45%) 50%, hsl(217 91% 75%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(218 100% 4%) 0%, hsl(220 15% 8%) 50%, hsl(220 25% 12%) 100%);
+    --gradient-accent: linear-gradient(45deg, hsl(217 91% 60%) 0%, hsl(142 76% 36%) 50%, hsl(280 100% 70%) 100%);
+    --gradient-background: linear-gradient(180deg, hsl(218 100% 4%) 0%, hsl(220 15% 6%) 50%, hsl(217 91% 8%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 60% / 0.15) 0%, hsl(280 100% 70% / 0.15) 25%, hsl(142 76% 36% / 0.15) 50%, hsl(220 100% 75% / 0.15) 75%, hsl(217 91% 60% / 0.15) 100%);
+    
+    /* Dark mode shadows */
+    --shadow-soft: 0 2px 8px hsl(0 0% 0% / 0.3);
+    --shadow-medium: 0 4px 16px hsl(0 0% 0% / 0.4);
+    --shadow-strong: 0 8px 32px hsl(0 0% 0% / 0.5);
+    --shadow-glow: 0 0 32px hsl(217 91% 60% / 0.4);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+body {
+    @apply bg-background text-foreground;
+    background: var(--gradient-background);
+    backdrop-filter: blur(0.5px);
+  }
+
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .glass-effect {
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .blur-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-hero);
+    backdrop-filter: blur(120px);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .glass-morphism {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .glass-morphism {
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@layer components {
+  .blockchain-gradient {
+    background: var(--gradient-primary);
+  }
+  
+  .blockchain-text-gradient {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .blockchain-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .blockchain-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: var(--shadow-soft);
+    transition: var(--transition-smooth);
+  }
+  
+  .blockchain-card:hover {
+    box-shadow: var(--shadow-medium);
+    transform: translateY(-2px);
+  }
+}
+
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite alternate;
+  }
+  
+  .animate-spin-slow {
+    animation: spin 8s linear infinite;
+  }
+  
+  .animate-bounce-soft {
+    animation: bounce-soft 2s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  
+  @keyframes pulse-glow {
+    0% { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
+    100% { box-shadow: 0 0 40px hsl(var(--primary) / 0.6); }
+  }
+  
+  @keyframes bounce-soft {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes shine {
+    0% { background-position: 100%; }
+    100% { background-position: -100%; }
+  }
+  
+  .animate-shine {
+    animation: shine 2s linear infinite;
+  }
+}
