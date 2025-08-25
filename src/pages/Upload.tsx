@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
 import { motion } from 'framer-motion';
-import { Upload as UploadIcon, FileText, Shield, X } from 'lucide-react';
+import { Upload as UploadIcon, FileText, Shield, Bot, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,6 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Textarea } from '@/components/ui/textarea';
 import { useDocuments, type UploadedDocument } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { CareerToggle } from '@/components/ui/career-toggle';
-import { CareerDetailsForm } from '@/components/ui/career-details-form';
-import { SecurityIndicator } from '@/components/ui/security-indicator';
-import { CareerType, CareerDetails, EnhancedDocumentMetadata } from '@/lib/careerTypes';
-import { SecurityManager, SecurityCodes } from '@/lib/security';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -27,18 +22,9 @@ const Upload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
-  const [careerType, setCareerType] = useState<CareerType>('internship');
-  const [careerDetails, setCareerDetails] = useState<CareerDetails>({
-    type: 'internship',
-    position: '',
-    company: '',
-    startDate: '',
-    description: ''
-  });
-  const [securityCodes, setSecurityCodes] = useState<SecurityCodes | null>(null);
   const [formData, setFormData] = useState({
     fullName: '',
-    certificateName: '',
+    certificateName: '', // Changed from documentName
     institution: '',
     startDate: '',
     issueDate: '',
@@ -48,28 +34,6 @@ const Upload = () => {
   });
 
   const { addDocument } = useDocuments();
-
-  // Initialize security codes on component mount
-  useEffect(() => {
-    const initializeSecurity = () => {
-      const codes = SecurityManager.generateSecurityCodes(
-        undefined, // userId will be set when user is authenticated
-        window.location.hostname,
-        navigator.userAgent
-      );
-      setSecurityCodes(codes);
-    };
-
-    initializeSecurity();
-  }, []);
-
-  // Update career details when career type changes
-  useEffect(() => {
-    setCareerDetails(prev => ({
-      ...prev,
-      type: careerType
-    }));
-  }, [careerType]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -87,6 +51,7 @@ const Upload = () => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      // Don't start analysis immediately, wait for user to click Start Verification
     }
   };
 
@@ -95,6 +60,7 @@ const Upload = () => {
     const file = e.dataTransfer.files?.[0];
     if (file) {
       setSelectedFile(file);
+      // Don't start analysis immediately, wait for user to click Start Verification
     }
   };
 
@@ -113,20 +79,12 @@ const Upload = () => {
   };
 
   const simulateAIAnalysis = async (file: File) => {
-    // Validate required fields
+    // Validate required fields (grades now optional)
     const requiredFields = ['fullName', 'certificateName', 'institution', 'startDate', 'issueDate', 'personality'];
-    const requiredCareerFields = ['position', 'company', 'startDate'];
     const missingFields = requiredFields.filter(field => !formData[field]);
-    const missingCareerFields = requiredCareerFields.filter(field => !careerDetails[field]);
     
-    if (missingFields.length > 0 || missingCareerFields.length > 0) {
-      const allMissing = [...missingFields, ...missingCareerFields.map(f => `career ${f}`)];
-      alert(`Please fill in all required fields: ${allMissing.join(', ')}`);
-      return;
-    }
-
-    if (!securityCodes) {
-      alert('Security codes not initialized. Please refresh the page.');
+    if (missingFields.length > 0) {
+      alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -159,11 +117,8 @@ const Upload = () => {
       // 4. Metadata Validation (25%)
       const metadataScore = validateMetadata();
 
-      // 5. Security Validation (Bonus 10%)
-      const securityScore = validateSecurityCodes();
-
       // Calculate final accuracy score (0-100%)
-      const accuracy = Math.min(100, formatScore + structureScore + contentScore + metadataScore + securityScore);
+      const accuracy = formatScore + structureScore + contentScore + metadataScore;
       const isAuthentic = accuracy >= 90;
 
       // Generate verification details
@@ -187,11 +142,6 @@ const Upload = () => {
           score: metadataScore,
           maxScore: 25,
           details: 'Metadata and dates validation'
-        },
-        securityValidation: {
-          score: securityScore,
-          maxScore: 10,
-          details: 'Time-window security codes validation'
         }
       };
 
@@ -291,19 +241,6 @@ const Upload = () => {
     return score;
   };
 
-  const validateSecurityCodes = (): number => {
-    if (!securityCodes) return 0;
-    
-    const validation = SecurityManager.validateSecurityCodes(
-      securityCodes.sessionId,
-      securityCodes.forwardCode,
-      securityCodes.backwardCode,
-      securityCodes.userId
-    );
-    
-    return validation.valid ? 10 : 0;
-  };
-
   const generateVerificationIndicators = (details: any, isAuthentic: boolean): string[] => {
     if (isAuthentic) {
       return [
@@ -311,7 +248,6 @@ const Upload = () => {
         `Certificate structure validated (${details.structureAnalysis.score}/${details.structureAnalysis.maxScore})`,
         `Content verification passed (${details.contentVerification.score}/${details.contentVerification.maxScore})`,
         `Metadata validation successful (${details.metadataValidation.score}/${details.metadataValidation.maxScore})`,
-        `Security validation passed (${details.securityValidation.score}/${details.securityValidation.maxScore})`,
         'Digital signatures verified',
         'Blockchain verification successful'
       ];
@@ -321,7 +257,6 @@ const Upload = () => {
       if (details.structureAnalysis.score < 20) failedChecks.push('Certificate structure issues detected');
       if (details.contentVerification.score < 20) failedChecks.push('Content verification failed');
       if (details.metadataValidation.score < 20) failedChecks.push('Metadata validation failed');
-      if (details.securityValidation.score < 5) failedChecks.push('Security validation failed');
       
       return [
         ...failedChecks,
@@ -343,24 +278,7 @@ const Upload = () => {
     // Create blob from the selected file for original file downloads
     const fileBlob = new Blob([selectedFile], { type: selectedFile.type });
     
-    const enhancedMetadata: EnhancedDocumentMetadata = {
-      ...formData,
-      additionalDetails: formData.additionalDetails || '',
-      verified: false,
-      certificationStamp: 'By BlockCert Certified',
-      certificationDate: new Date().toISOString(),
-      certificationSystem: 'BlockCert Blockchain Verification',
-      careerType,
-      careerDetails,
-      securityCodes: securityCodes ? {
-        sessionId: securityCodes.sessionId,
-        forwardCode: securityCodes.forwardCode,
-        backwardCode: securityCodes.backwardCode,
-        expiresAt: securityCodes.expiresAt
-      } : undefined
-    };
-
-    const newDoc: any = {
+    const newDoc: UploadedDocument = {
       id: uuidv4(),
       name: selectedFile.name,
       type: selectedFile.type,
@@ -372,15 +290,16 @@ const Upload = () => {
       analysis: analysisResult.indicators,
       blockchainTx: analysisResult.blockchainVerification?.verificationHash || null,
       file: selectedFile,
-      blob: fileBlob,
-      metadata: enhancedMetadata,
-      careerCategory: careerType,
-      careerDetails,
-      securitySession: securityCodes ? {
-        sessionId: securityCodes.sessionId,
-        createdAt: new Date(),
-        ipAddress: window.location.hostname
-      } : undefined
+      blob: fileBlob, // Store blob for original file downloads with stamp
+      metadata: {
+        ...formData,
+        additionalDetails: formData.additionalDetails || '',
+        verified: false,
+        // Add BlockCert certification metadata
+        certificationStamp: 'By BlockCert Certified',
+        certificationDate: new Date().toISOString(),
+        certificationSystem: 'BlockCert Blockchain Verification'
+      }
     };
 
     addDocument(newDoc);
@@ -390,10 +309,6 @@ const Upload = () => {
     setTimeout(() => {
       navigate('/dashboard');
     }, 2000);
-  };
-
-  const handleSecurityRefresh = (newCodes: SecurityCodes) => {
-    setSecurityCodes(newCodes);
   };
 
   return (
@@ -448,152 +363,128 @@ const Upload = () => {
                     Certificate Details
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Security Indicator */}
-                  <SecurityIndicator 
-                    securityCodes={securityCodes} 
-                    onRefresh={handleSecurityRefresh}
-                  />
-                  
-                  {/* Career Type Toggle */}
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Application Type</label>
-                    <CareerToggle 
-                      value={careerType} 
-                      onChange={setCareerType}
-                      className="mb-4"
-                    />
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Full Name *</label>
+                      <Input
+                        name="fullName"
+                        value={formData.fullName}
+                        onChange={handleInputChange}
+                        placeholder="Enter your full name"
+                        required
+                        className="bg-card border-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Certificate Name *</label>
+                      <Input
+                        name="certificateName"
+                        value={formData.certificateName}
+                        onChange={handleInputChange}
+                        placeholder="e.g., Bachelor's Degree"
+                        required
+                        className="bg-card border-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Institution Name *</label>
+                      <Input
+                        name="institution"
+                        value={formData.institution}
+                        onChange={handleInputChange}
+                        placeholder="Enter institution name"
+                        required
+                        className="bg-card border-input"
+                      />
+                    </div>
                   </div>
 
-                  {/* Career Details Form */}
-                  <CareerDetailsForm
-                    careerType={careerType}
-                    careerDetails={careerDetails}
-                    onChange={setCareerDetails}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Start Date *</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={`w-full justify-start text-left font-normal bg-card border-input ${
+                              !formData.startDate && "text-muted-foreground"
+                            }`}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.startDate ? format(new Date(formData.startDate), 'PPP') : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={formData.startDate ? new Date(formData.startDate) : undefined}
+                            onSelect={(date) => date && handleDateSelect('startDate', date)}
+                            initialFocus
+                            className="rounded-lg border shadow-lg"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Issue Date *</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={`w-full justify-start text-left font-normal bg-card border-input ${
+                              !formData.issueDate && "text-muted-foreground"
+                            }`}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.issueDate ? format(new Date(formData.issueDate), 'PPP') : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={formData.issueDate ? new Date(formData.issueDate) : undefined}
+                            onSelect={(date) => date && handleDateSelect('issueDate', date)}
+                            initialFocus
+                            className="rounded-lg border shadow-lg"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
 
-                  <div className="border-t border-border pt-4">
-                    <h4 className="text-sm font-medium mb-3">Certificate Information</h4>
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Full Name *</label>
-                        <Input
-                          name="fullName"
-                          value={formData.fullName}
-                          onChange={handleInputChange}
-                          placeholder="Enter your full name"
-                          required
-                          className="bg-card border-input"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Certificate Name *</label>
-                        <Input
-                          name="certificateName"
-                          value={formData.certificateName}
-                          onChange={handleInputChange}
-                          placeholder="e.g., Bachelor's Degree"
-                          required
-                          className="bg-card border-input"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Institution Name *</label>
-                        <Input
-                          name="institution"
-                          value={formData.institution}
-                          onChange={handleInputChange}
-                          placeholder="Enter institution name"
-                          required
-                          className="bg-card border-input"
-                        />
-                      </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Grades (optional)</label>
+                      <Input
+                        name="grades"
+                        value={formData.grades}
+                        onChange={handleInputChange}
+                        placeholder="Enter grades if available"
+                        className="bg-card border-input"
+                      />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Start Date *</label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={`w-full justify-start text-left font-normal bg-card border-input ${
-                                !formData.startDate && "text-muted-foreground"
-                              }`}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {formData.startDate ? format(new Date(formData.startDate), 'PPP') : <span>Pick a date</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={formData.startDate ? new Date(formData.startDate) : undefined}
-                              onSelect={(date) => date && handleDateSelect('startDate', date)}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Issue Date *</label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={`w-full justify-start text-left font-normal bg-card border-input ${
-                                !formData.issueDate && "text-muted-foreground"
-                              }`}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {formData.issueDate ? format(new Date(formData.issueDate), 'PPP') : <span>Pick a date</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={formData.issueDate ? new Date(formData.issueDate) : undefined}
-                              onSelect={(date) => date && handleDateSelect('issueDate', date)}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Personality *</label>
+                      <Input
+                        name="personality"
+                        value={formData.personality}
+                        onChange={handleInputChange}
+                        placeholder="Enter personality traits"
+                        required
+                        className="bg-card border-input"
+                      />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Grades (optional)</label>
-                        <Input
-                          name="grades"
-                          value={formData.grades}
-                          onChange={handleInputChange}
-                          placeholder="Enter grades if available"
-                          className="bg-card border-input"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-medium mb-1 block">Personality *</label>
-                        <Input
-                          name="personality"
-                          value={formData.personality}
-                          onChange={handleInputChange}
-                          placeholder="Enter personality traits"
-                          required
-                          className="bg-card border-input"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
+                    <div>
                       <label className="text-sm font-medium mb-1 block">Additional Details (optional)</label>
                       <Textarea
                         name="additionalDetails"
                         value={formData.additionalDetails}
                         onChange={handleInputChange}
                         placeholder="Add any additional details about the certificate"
-                        rows={3}
+                        rows={4}
                         className="bg-card border-input"
                       />
                     </div>
@@ -628,7 +519,7 @@ const Upload = () => {
                     <UploadIcon className="h-12 w-12 text-muted-foreground mb-4 mx-auto" />
                     <p className="text-lg font-medium mb-2">Drag and drop your certificate here</p>
                     <p className="text-sm text-muted-foreground">
-                      Supported formats: PDF, DOC, DOCX, JPG, PNG (max 10MB)
+                      Supported formats: PDF, DOC, DOCX, JPG, PNG
                     </p>
                   </div>
 
@@ -659,7 +550,7 @@ const Upload = () => {
                       className="w-full mt-4"
                       onClick={() => simulateAIAnalysis(selectedFile)}
                     >
-                      Start AI Verification
+                      Start Verification
                     </Button>
                   )}
 
@@ -667,10 +558,10 @@ const Upload = () => {
                     <div className="text-center py-8">
                       <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
                       <p className="text-muted-foreground">Analyzing certificate authenticity...</p>
-                      <p className="text-sm text-muted-foreground mt-2">Running blockchain verification...</p>
+                      <p className="text-sm text-muted-foreground mt-2">Running smart contract verification...</p>
                     </div>
                   ) : analysisResult && (
-                    <div className="space-y-4 mt-4">
+                    <div className="space-y-4">
                       <div className={`p-4 rounded-lg ${
                         analysisResult.isAuthentic
                           ? 'bg-green-500/10 dark:bg-green-500/5 border border-green-500/20'
@@ -695,33 +586,27 @@ const Upload = () => {
                           {analysisResult.details && (
                             <>
                               <p className="text-sm">
-                                <span className="text-muted-foreground">Document Format:</span>{' '}
+                                <span className="text-muted-foreground">Document Format Score:</span>{' '}
                                 <span className={analysisResult.details.formatAnalysis.score >= 20 ? 'text-green-500' : 'text-yellow-500'}>
                                   {analysisResult.details.formatAnalysis.score}/{analysisResult.details.formatAnalysis.maxScore}
                                 </span>
                               </p>
                               <p className="text-sm">
-                                <span className="text-muted-foreground">Structure Analysis:</span>{' '}
+                                <span className="text-muted-foreground">Structure Analysis Score:</span>{' '}
                                 <span className={analysisResult.details.structureAnalysis.score >= 20 ? 'text-green-500' : 'text-yellow-500'}>
                                   {analysisResult.details.structureAnalysis.score}/{analysisResult.details.structureAnalysis.maxScore}
                                 </span>
                               </p>
                               <p className="text-sm">
-                                <span className="text-muted-foreground">Content Verification:</span>{' '}
+                                <span className="text-muted-foreground">Content Verification Score:</span>{' '}
                                 <span className={analysisResult.details.contentVerification.score >= 20 ? 'text-green-500' : 'text-yellow-500'}>
                                   {analysisResult.details.contentVerification.score}/{analysisResult.details.contentVerification.maxScore}
                                 </span>
                               </p>
                               <p className="text-sm">
-                                <span className="text-muted-foreground">Metadata Validation:</span>{' '}
+                                <span className="text-muted-foreground">Metadata Validation Score:</span>{' '}
                                 <span className={analysisResult.details.metadataValidation.score >= 20 ? 'text-green-500' : 'text-yellow-500'}>
                                   {analysisResult.details.metadataValidation.score}/{analysisResult.details.metadataValidation.maxScore}
-                                </span>
-                              </p>
-                              <p className="text-sm">
-                                <span className="text-muted-foreground">Security Validation:</span>{' '}
-                                <span className={analysisResult.details.securityValidation.score >= 5 ? 'text-green-500' : 'text-yellow-500'}>
-                                  {analysisResult.details.securityValidation.score}/{analysisResult.details.securityValidation.maxScore}
                                 </span>
                               </p>
                             </>
