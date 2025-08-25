@@ -11,6 +11,11 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Textarea } from '@/components/ui/textarea';
 import { useDocuments, type UploadedDocument } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
+import { CareerToggle } from '@/components/ui/career-toggle';
+import { CareerDetailsForm } from '@/components/ui/career-details-form';
+import { SecurityIndicator } from '@/components/ui/security-indicator';
+import { CareerType, CareerDetails, EnhancedDocumentMetadata } from '@/lib/careerTypes';
+import { SecurityManager, SecurityCodes } from '@/lib/security';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -22,6 +27,15 @@ const Upload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [careerType, setCareerType] = useState<CareerType>('internship');
+  const [careerDetails, setCareerDetails] = useState<CareerDetails>({
+    type: 'internship',
+    position: '',
+    company: '',
+    startDate: '',
+    description: ''
+  });
+  const [securityCodes, setSecurityCodes] = useState<SecurityCodes | null>(null);
   const [formData, setFormData] = useState({
     fullName: '',
     certificateName: '', // Changed from documentName
@@ -34,6 +48,28 @@ const Upload = () => {
   });
 
   const { addDocument } = useDocuments();
+
+  // Initialize security codes on component mount
+  useEffect(() => {
+    const initializeSecurity = () => {
+      const codes = SecurityManager.generateSecurityCodes(
+        undefined, // userId will be set when user is authenticated
+        window.location.hostname,
+        navigator.userAgent
+      );
+      setSecurityCodes(codes);
+    };
+
+    initializeSecurity();
+  }, []);
+
+  // Update career details when career type changes
+  useEffect(() => {
+    setCareerDetails(prev => ({
+      ...prev,
+      type: careerType
+    }));
+  }, [careerType]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -81,10 +117,18 @@ const Upload = () => {
   const simulateAIAnalysis = async (file: File) => {
     // Validate required fields (grades now optional)
     const requiredFields = ['fullName', 'certificateName', 'institution', 'startDate', 'issueDate', 'personality'];
+    const requiredCareerFields = ['position', 'company', 'startDate'];
     const missingFields = requiredFields.filter(field => !formData[field]);
+    const missingCareerFields = requiredCareerFields.filter(field => !careerDetails[field]);
     
-    if (missingFields.length > 0) {
-      alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
+    if (missingFields.length > 0 || missingCareerFields.length > 0) {
+      const allMissing = [...missingFields, ...missingCareerFields.map(f => `career ${f}`)];
+      alert(`Please fill in all required fields: ${allMissing.join(', ')}`);
+      return;
+    }
+
+    if (!securityCodes) {
+      alert('Security codes not initialized. Please refresh the page.');
       return;
     }
 
@@ -117,8 +161,11 @@ const Upload = () => {
       // 4. Metadata Validation (25%)
       const metadataScore = validateMetadata();
 
+      // 5. Security Validation (Bonus 10%)
+      const securityScore = validateSecurityCodes();
+
       // Calculate final accuracy score (0-100%)
-      const accuracy = formatScore + structureScore + contentScore + metadataScore;
+      const accuracy = Math.min(100, formatScore + structureScore + contentScore + metadataScore + securityScore);
       const isAuthentic = accuracy >= 90;
 
       // Generate verification details
@@ -142,6 +189,11 @@ const Upload = () => {
           score: metadataScore,
           maxScore: 25,
           details: 'Metadata and dates validation'
+        },
+        securityValidation: {
+          score: securityScore,
+          maxScore: 10,
+          details: 'Time-window security codes validation'
         }
       };
 
@@ -241,6 +293,19 @@ const Upload = () => {
     return score;
   };
 
+  const validateSecurityCodes = (): number => {
+    if (!securityCodes) return 0;
+    
+    const validation = SecurityManager.validateSecurityCodes(
+      securityCodes.sessionId,
+      securityCodes.forwardCode,
+      securityCodes.backwardCode,
+      securityCodes.userId
+    );
+    
+    return validation.valid ? 10 : 0;
+  };
+
   const generateVerificationIndicators = (details: any, isAuthentic: boolean): string[] => {
     if (isAuthentic) {
       return [
@@ -248,6 +313,7 @@ const Upload = () => {
         `Certificate structure validated (${details.structureAnalysis.score}/${details.structureAnalysis.maxScore})`,
         `Content verification passed (${details.contentVerification.score}/${details.contentVerification.maxScore})`,
         `Metadata validation successful (${details.metadataValidation.score}/${details.metadataValidation.maxScore})`,
+        `Security validation passed (${details.securityValidation.score}/${details.securityValidation.maxScore})`,
         'Digital signatures verified',
         'Blockchain verification successful'
       ];
@@ -257,6 +323,7 @@ const Upload = () => {
       if (details.structureAnalysis.score < 20) failedChecks.push('Certificate structure issues detected');
       if (details.contentVerification.score < 20) failedChecks.push('Content verification failed');
       if (details.metadataValidation.score < 20) failedChecks.push('Metadata validation failed');
+      if (details.securityValidation.score < 5) failedChecks.push('Security validation failed');
       
       return [
         ...failedChecks,
@@ -278,7 +345,24 @@ const Upload = () => {
     // Create blob from the selected file for original file downloads
     const fileBlob = new Blob([selectedFile], { type: selectedFile.type });
     
-    const newDoc: UploadedDocument = {
+    const enhancedMetadata: EnhancedDocumentMetadata = {
+      ...formData,
+      additionalDetails: formData.additionalDetails || '',
+      verified: false,
+      certificationStamp: 'By BlockCert Certified',
+      certificationDate: new Date().toISOString(),
+      certificationSystem: 'BlockCert Blockchain Verification',
+      careerType,
+      careerDetails,
+      securityCodes: securityCodes ? {
+        sessionId: securityCodes.sessionId,
+        forwardCode: securityCodes.forwardCode,
+        backwardCode: securityCodes.backwardCode,
+        expiresAt: securityCodes.expiresAt
+      } : undefined
+    };
+
+    const newDoc: any = {
       id: uuidv4(),
       name: selectedFile.name,
       type: selectedFile.type,
@@ -291,15 +375,14 @@ const Upload = () => {
       blockchainTx: analysisResult.blockchainVerification?.verificationHash || null,
       file: selectedFile,
       blob: fileBlob, // Store blob for original file downloads with stamp
-      metadata: {
-        ...formData,
-        additionalDetails: formData.additionalDetails || '',
-        verified: false,
-        // Add BlockCert certification metadata
-        certificationStamp: 'By BlockCert Certified',
-        certificationDate: new Date().toISOString(),
-        certificationSystem: 'BlockCert Blockchain Verification'
-      }
+      metadata: enhancedMetadata,
+      careerCategory: careerType,
+      careerDetails,
+      securitySession: securityCodes ? {
+        sessionId: securityCodes.sessionId,
+        createdAt: new Date(),
+        ipAddress: window.location.hostname
+      } : undefined
     };
 
     addDocument(newDoc);
@@ -364,6 +447,28 @@ const Upload = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Security Indicator */}
+                  <SecurityIndicator securityCodes={securityCodes} />
+                  
+                  {/* Career Type Toggle */}
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Application Type</label>
+                    <CareerToggle 
+                      value={careerType} 
+                      onChange={setCareerType}
+                      className="mb-4"
+                    />
+                  </div>
+
+                  {/* Career Details Form */}
+                  <CareerDetailsForm
+                    careerType={careerType}
+                    careerDetails={careerDetails}
+                    onChange={setCareerDetails}
+                  />
+
+                  <div className="border-t border-border pt-4">
+                    <h4 className="text-sm font-medium mb-3">Certificate Information</h4>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="text-sm font-medium mb-1 block">Full Name *</label>
@@ -609,6 +714,12 @@ const Upload = () => {
                                   {analysisResult.details.metadataValidation.score}/{analysisResult.details.metadataValidation.maxScore}
                                 </span>
                               </p>
+                              <p className="text-sm">
+                                <span className="text-muted-foreground">Security Validation Score:</span>{' '}
+                                <span className={analysisResult.details.securityValidation.score >= 5 ? 'text-green-500' : 'text-yellow-500'}>
+                                  {analysisResult.details.securityValidation.score}/{analysisResult.details.securityValidation.maxScore}
+                                </span>
+                              </p>
                             </>
                           )}
                         </div>
@@ -672,6 +783,7 @@ const Upload = () => {
                     </div>
                   )}
                 </CardContent>
+              </div>
               </Card>
             </div>
           </SignedIn>

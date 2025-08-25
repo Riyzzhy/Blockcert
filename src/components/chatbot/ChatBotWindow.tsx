@@ -11,7 +11,9 @@ import {
   Search,
   LayoutDashboard,
   Shield,
-  FileText,
+  Briefcase,
+  GraduationCap,
+  Lock,
   HelpCircle,
   ExternalLink
 } from 'lucide-react';
@@ -64,7 +66,7 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
       // Send welcome message when chatbot opens for the first time
       setTimeout(() => {
         addBotMessage(
-          "👋 Welcome to BlockCert! I'm here to help you with certificate verification, uploads, and any questions about our blockchain platform. How can I assist you today?",
+          "👋 Welcome to BlockCert! I'm your AI assistant for:\n\n🔒 **Advanced Security** - Time-window codes & blockchain protection\n💼 **Career Applications** - Internship/Job certificate management\n📤 **Smart Uploads** - AI-powered document verification\n🔍 **Instant Verification** - Real-time authenticity checking\n\nHow can I help you today?",
           getWelcomeQuickActions()
         );
       }, 500);
@@ -75,6 +77,7 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
     { label: 'Upload Certificate', action: 'navigate', value: '/upload', icon: Upload },
     { label: 'Verify Document', action: 'navigate', value: '/verify', icon: Search },
     { label: 'View Dashboard', action: 'navigate', value: '/dashboard', icon: LayoutDashboard },
+    { label: 'Security Features', action: 'message', value: 'What are forward & backward security codes?', icon: Lock },
     { label: 'How it Works', action: 'message', value: 'How does BlockCert work?', icon: HelpCircle }
   ];
 
@@ -415,6 +418,15 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
                     >
                       <LayoutDashboard className="w-3 h-3 mr-1" />
                       Dashboard
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickAction({ label: 'Security', action: 'message', value: 'What are forward & backward security codes?', icon: Lock })}
+                      className="text-xs"
+                    >
+                      <Lock className="w-3 h-3 mr-1" />
+                      Security
                     </Button>
                   </motion.div>
                 )}

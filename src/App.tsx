@@ -12,8 +12,6 @@ import NotFound from "./pages/NotFound";
 import DocumentView from './pages/DocumentView';
 import { DocumentProvider } from './lib/utils.tsx';
 import SignIn from './pages/SignIn';
-import { TwentyFirstToolbar } from '@21st-extension/toolbar-react';
-import { ReactPlugin } from '@21st-extension/react';
 import { ChatBot } from './components/chatbot';
 
 const queryClient = new QueryClient();
@@ -23,11 +21,6 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <TwentyFirstToolbar
-        config={{
-          plugins: [ReactPlugin]
-        }}
-      />
       <DocumentProvider>
         <BrowserRouter>
           <Routes>

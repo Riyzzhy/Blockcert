@@ -62,6 +62,23 @@ export class ChatBotService {
     const message = userMessage.toLowerCase();
     const response = botResponse.toLowerCase();
 
+    // Security-related actions
+    if (message.includes('security') || message.includes('codes') || response.includes('security')) {
+      return [
+        { label: 'Upload with Security', action: 'navigate', value: '/upload' },
+        { label: 'How Security Works', action: 'message', value: 'Explain blockchain security features' }
+      ];
+    }
+
+    // Career-related actions
+    if (message.includes('internship') || message.includes('job') || message.includes('career')) {
+      return [
+        { label: 'Upload for Internship', action: 'navigate', value: '/upload' },
+        { label: 'Upload for Job', action: 'navigate', value: '/upload' },
+        { label: 'Career Features', action: 'message', value: 'Tell me about internship and job features' }
+      ];
+    }
+
     // Generate contextual quick actions based on the conversation
     if (message.includes('upload') || response.includes('upload')) {
       return [
@@ -95,6 +112,29 @@ export class ChatBotService {
 
   private generateLocalResponse(message: string): ChatResponse {
     const msg = message.toLowerCase();
+
+    // Security codes explanation
+    if (msg.includes('security') || msg.includes('forward') || msg.includes('backward') || msg.includes('codes')) {
+      return {
+        content: "🔒 **Security Codes System:**\n\n**Forward & Backward Codes** are advanced security features that:\n\n• **Prevent Replay Attacks** - Each code is single-use only\n• **Time-Limited** - Expire after 30 minutes\n• **Session-Unique** - Generated per browser session\n• **Blockchain-Verified** - Validated before any operation\n\n**How it works:**\n1. Codes are auto-generated when you visit upload page\n2. They're embedded in your verification process\n3. Blockchain validates codes before storing certificates\n4. Used codes become invalid immediately\n\nThis ensures maximum security for your academic documents!",
+        quickActions: [
+          { label: 'See Security in Action', action: 'navigate', value: '/upload' },
+          { label: 'Blockchain Security', action: 'message', value: 'Tell me about blockchain security' }
+        ]
+      };
+    }
+
+    // Career/Internship/Job features
+    if (msg.includes('internship') || msg.includes('job') || msg.includes('career') || msg.includes('apply')) {
+      return {
+        content: "💼 **Career Application System:**\n\n**Internship Mode:**\n• Upload certificates for internship applications\n• Track position, company, and duration\n• Manage project details and achievements\n\n**Job Mode:**\n• Upload certificates for job applications\n• Professional experience tracking\n• Skills and accomplishments management\n\n**How to use:**\n1. Go to Upload page\n2. Use the toggle to select Internship or Job\n3. Fill in career-specific details\n4. Upload your certificate\n5. Get verified credentials for applications!\n\nBoth modes use the same security and blockchain verification!",
+        quickActions: [
+          { label: 'Upload for Internship', action: 'navigate', value: '/upload' },
+          { label: 'Upload for Job', action: 'navigate', value: '/upload' },
+          { label: 'View Applications', action: 'navigate', value: '/dashboard' }
+        ]
+      };
+    }
 
     // Upload related
     if (msg.includes('upload') || msg.includes('add certificate')) {
@@ -153,11 +193,12 @@ export class ChatBotService {
 
     // Default response
     return {
-      content: "I'm here to help with BlockCert! I can assist you with:\n\n📤 **Certificate Uploads** - Upload and verify documents\n🔍 **Hash Verification** - Check certificate authenticity\n📊 **Dashboard Management** - View and download certificates\n❓ **General Questions** - Platform features and pricing\n\nWhat would you like to do?",
+      content: "I'm here to help with BlockCert! I can assist you with:\n\n📤 **Certificate Uploads** - Upload and verify documents with advanced security\n🔍 **Hash Verification** - Check certificate authenticity\n📊 **Dashboard Management** - View and download certificates\n💼 **Career Applications** - Internship/Job toggle and tracking\n🔒 **Security Features** - Forward/backward codes and time-window protection\n❓ **General Questions** - Platform features and pricing\n\nWhat would you like to do?",
       quickActions: [
         { label: 'Upload Certificate', action: 'navigate', value: '/upload' },
         { label: 'Verify Document', action: 'navigate', value: '/verify' },
         { label: 'View Dashboard', action: 'navigate', value: '/dashboard' },
+        { label: 'Security Info', action: 'message', value: 'What are forward & backward security codes?' },
         { label: 'Learn More', action: 'external', value: '#about' }
       ]
     };

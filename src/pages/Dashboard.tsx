@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDocuments } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Shield, Search, Filter, Eye, Download, QrCode, Trash2, CheckCircle, AlertTriangle, FileText, X } from 'lucide-react';
+import { Shield, Search, Filter, Eye, Download, QrCode, Trash2, CheckCircle, AlertTriangle, FileText, X, Briefcase, GraduationCap, Clock, Lock } from 'lucide-react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react';
@@ -34,10 +34,15 @@ const Dashboard = () => {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [currentQrCode, setCurrentQrCode] = useState<string | null>(null);
 
+  // Career filter state
+  const [careerFilter, setCareerFilter] = useState<string | null>(null);
+
   // Calculate document statistics
   const totalDocs = documents.length;
   const verifiedDocs = documents.filter(doc => doc.status === 'verified').length;
   const pendingDocs = documents.filter(doc => doc.status === 'pending_verification').length;
+  const internshipDocs = documents.filter(doc => doc.careerCategory === 'internship').length;
+  const jobDocs = documents.filter(doc => doc.careerCategory === 'job').length;
 
   // Filter documents based on search and status
   const filteredDocuments = documents.filter(doc => {
@@ -46,8 +51,9 @@ const Dashboard = () => {
                          doc.metadata?.fullName?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = !statusFilter || doc.status === statusFilter;
+    const matchesCareer = !careerFilter || doc.careerCategory === careerFilter;
     
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesCareer;
   });
 
   const handleViewDocument = (docId: string) => {
@@ -567,6 +573,20 @@ Original file is attached/referenced above.
                     <div class="info-value">${doc.metadata.additionalDetails}</div>
                 </div>
                 ` : ''}
+                ${doc.careerDetails ? `
+                <div class="info-item">
+                    <div class="info-label">Career Type</div>
+                    <div class="info-value">${doc.careerCategory}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Position</div>
+                    <div class="info-value">${doc.careerDetails.position}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Company</div>
+                    <div class="info-value">${doc.careerDetails.company}</div>
+                </div>
+                ` : ''}
             </div>
         </div>
 
@@ -617,6 +637,12 @@ Original file is attached/referenced above.
                     <div class="info-label">Verification URL</div>
                     <div class="info-value"><a href="${verificationUrl}" target="_blank">${verificationUrl}</a></div>
                 </div>
+                ${doc.securitySession ? `
+                <div class="info-item">
+                    <div class="info-label">Security Session</div>
+                    <div class="hash-display">${doc.securitySession.sessionId}</div>
+                </div>
+                ` : ''}
             </div>
             
             <div class="info-item">
@@ -691,7 +717,9 @@ Original file is attached/referenced above.
             startDate: doc.metadata?.startDate || 'Not specified',
             grades: doc.metadata?.grades || 'Not specified',
             personality: doc.metadata?.personality || 'Not specified',
-            additionalDetails: doc.metadata?.additionalDetails || 'Not specified'
+            additionalDetails: doc.metadata?.additionalDetails || 'Not specified',
+            careerType: doc.careerCategory || 'Not specified',
+            careerDetails: doc.careerDetails || null
           },
           fileInfo: {
             fileName: doc.name,
@@ -705,6 +733,11 @@ Original file is attached/referenced above.
             blockchainHash: doc.hash,
             transactionId: doc.blockchainTx || 'Not available',
             verificationUrl: `${BASE_URL}/verify?hash=${doc.hash}`
+          },
+          security: {
+            sessionId: doc.securitySession?.sessionId || 'Not available',
+            createdAt: doc.securitySession?.createdAt || 'Not available',
+            ipAddress: doc.securitySession?.ipAddress || 'Not available'
           },
           analysis: doc.analysis || 'No analysis available',
           generatedAt: new Date().toLocaleString()
@@ -807,7 +840,7 @@ Original file is attached/referenced above.
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <Card>
             <CardContent className="flex items-center justify-between p-6">
               <div>
@@ -835,6 +868,26 @@ Original file is attached/referenced above.
                 <h2 className="text-3xl font-bold mt-2">{pendingDocs}</h2>
               </div>
               <AlertTriangle className="h-8 w-8 text-yellow-500 opacity-75" />
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex items-center justify-between p-6">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Internships</p>
+                <h2 className="text-3xl font-bold mt-2">{internshipDocs}</h2>
+              </div>
+              <GraduationCap className="h-8 w-8 text-blue-500 opacity-75" />
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex items-center justify-between p-6">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Jobs</p>
+                <h2 className="text-3xl font-bold mt-2">{jobDocs}</h2>
+              </div>
+              <Briefcase className="h-8 w-8 text-purple-500 opacity-75" />
             </CardContent>
           </Card>
         </div>
@@ -869,6 +922,26 @@ Original file is attached/referenced above.
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Briefcase className="h-4 w-4" />
+                {careerFilter ? `Career: ${careerFilter}` : 'Career Type'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setCareerFilter(null)}>
+                All Types
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setCareerFilter('internship')}>
+                Internships Only
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setCareerFilter('job')}>
+                Jobs Only
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Documents List */}
@@ -881,9 +954,27 @@ Original file is attached/referenced above.
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-semibold">{doc.name}</h3>
                       {getStatusBadge(doc.status)}
+                      {doc.careerCategory && (
+                        <Badge variant="outline" className="gap-1">
+                          {doc.careerCategory === 'internship' ? (
+                            <>
+                              <GraduationCap className="w-3 h-3" />
+                              Internship
+                            </>
+                          ) : (
+                            <>
+                              <Briefcase className="w-3 h-3" />
+                              Job
+                            </>
+                          )}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Uploaded on {doc.uploadDate} • {doc.metadata?.institution}
+                      {doc.careerDetails && (
+                        <> • {doc.careerDetails.position} at {doc.careerDetails.company}</>
+                      )}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <p className="text-sm">
@@ -898,6 +989,15 @@ Original file is attached/referenced above.
                           {doc.confidence}%
                         </span>
                       </p>
+                      {doc.securitySession && (
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Security:</span>{' '}
+                          <span className="text-green-500 flex items-center gap-1">
+                            <Lock className="w-3 h-3" />
+                            Protected
+                          </span>
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
