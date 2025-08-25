@@ -1,5 +1,4 @@
 import CryptoJS from 'crypto-js';
-import jwt from 'jsonwebtoken';
 
 export interface SecurityCodes {
   forwardCode: string;
@@ -137,45 +136,46 @@ export class SecurityManager {
   }
 
   /**
-   * Generate JWT token with security codes embedded
-   */
-  static generateSecureToken(securityCodes: SecurityCodes): string {
-    return jwt.sign(
-      {
-        sessionId: securityCodes.sessionId,
-        forwardCode: securityCodes.forwardCode,
-        backwardCode: securityCodes.backwardCode,
-        expiresAt: securityCodes.expiresAt,
-        userId: securityCodes.userId
-      },
-      this.SECRET_KEY,
-      { expiresIn: '30m' }
-    );
-  }
-
-  /**
-   * Verify JWT token and extract security codes
-   */
-  static verifySecureToken(token: string): SecurityCodes | null {
-    try {
-      const decoded = jwt.verify(token, this.SECRET_KEY) as any;
-      return {
-        sessionId: decoded.sessionId,
-        forwardCode: decoded.forwardCode,
-        backwardCode: decoded.backwardCode,
-        expiresAt: new Date(decoded.expiresAt),
-        userId: decoded.userId
-      };
-    } catch (error) {
-      return null;
-    }
-  }
-
-  /**
    * Get active sessions count (for monitoring)
    */
   static getActiveSessionsCount(): number {
     this.cleanupExpiredSessions();
     return this.sessions.size;
+  }
+
+  /**
+   * Refresh security codes (generate new ones for same session)
+   */
+  static refreshSecurityCodes(sessionId: string): SecurityCodes | null {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.isUsed || new Date() > session.expiresAt) {
+      return null;
+    }
+
+    // Generate new codes for the same session
+    const timestamp = Date.now();
+    const newExpiresAt = new Date(timestamp + this.SESSION_DURATION);
+
+    const forwardSeed = `${sessionId}-${timestamp}-${session.userId || 'anonymous'}-forward-refresh`;
+    const newForwardCode = CryptoJS.SHA256(forwardSeed + this.SECRET_KEY).toString();
+
+    const backwardSeed = `${sessionId}-${timestamp}-${session.userId || 'anonymous'}-backward-refresh`;
+    const newBackwardCode = CryptoJS.SHA256(backwardSeed + this.SECRET_KEY).toString();
+
+    // Update session
+    session.forwardCode = newForwardCode;
+    session.backwardCode = newBackwardCode;
+    session.expiresAt = newExpiresAt;
+    session.isUsed = false;
+
+    this.sessions.set(sessionId, session);
+
+    return {
+      forwardCode: newForwardCode,
+      backwardCode: newBackwardCode,
+      sessionId,
+      expiresAt: newExpiresAt,
+      userId: session.userId
+    };
   }
 }

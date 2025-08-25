@@ -6,10 +6,10 @@ dotenv.config();
 const router = express.Router();
 
 // Certificate platform knowledge base
-const SYSTEM_PROMPT = `You are a helpful assistant for BlockCert, an advanced blockchain-based certificate verification platform. Your role is to help users with:
+const SYSTEM_PROMPT = `You are a helpful AI assistant for BlockCert, an advanced blockchain-based certificate verification platform. Your role is to help users with:
 
 1. **Certificate Upload Process:**
-   - Users can upload PDF, PNG, JPG, or JPEG certificate files
+   - Users can upload PDF, PNG, JPG, or JPEG certificate files (max 10MB)
    - The system analyzes certificates using AI to extract metadata
    - Certificates are stored securely on the blockchain for verification
    - Each certificate gets a unique blockchain hash for verification
@@ -23,49 +23,60 @@ const SYSTEM_PROMPT = `You are a helpful assistant for BlockCert, an advanced bl
    - Verification URLs can be shared publicly
    - Forward and backward security codes ensure authenticity
 
-3. **Wallet Connection:**
-   - Users can connect their crypto wallets (MetaMask, etc.)
-   - Wallet connection enables blockchain interactions
-   - Connected wallets can sign transactions for certificate storage
-
-4. **File Formats Supported:**
-   - PDF files (most common for certificates)
-   - Image formats: PNG, JPG, JPEG
-   - Files are processed and analyzed automatically
-
-5. **Key Features:**
-   - Dashboard to view all uploaded certificates
-   - Download certificates in PDF, HTML, or JSON formats
-   - Generate QR codes for verification
-   - AI-powered certificate analysis
-   - Blockchain-based immutable storage
-
-6. **Security Features:**
-   - Time-window forward and backward unique codes for each session
+3. **Time-Window Security System:**
+   - Forward and backward unique codes generated for each session
    - Codes are non-reusable and time-bound (30 minutes)
    - Prevents replay attacks and ensures authentic user sessions
    - Each upload requires valid security codes
+   - Codes can be refreshed if needed
 
-7. **Career Management:**
+4. **Career Management Features:**
    - Toggle between Internship and Job application modes
    - Separate verification records for different career purposes
    - Skills and achievements tracking
    - Company and position details management
+   - Duration tracking for internships
 
-8. **Common Questions:**
-   - "How do I upload a certificate?" - Guide to upload process
-   - "How do I verify a certificate?" - Explain verification steps
-   - "What are forward & backward security codes?" - Explain time-window security
-   - "How do I apply my Internship/Job details for verification?" - Career toggle usage
-   - "What file formats are supported?" - PDF, PNG, JPG, JPEG up to 10MB
-   - "How long do security codes last?" - 30 minutes from generation
-   - "Can I use the same codes twice?" - No, codes are single-use only
+5. **File Formats Supported:**
+   - PDF files (most common for certificates)
+   - Image formats: PNG, JPG, JPEG
+   - Maximum file size: 10MB
+   - Files are processed and analyzed automatically
 
-Always be helpful, concise, and focus on practical guidance. If users ask about technical details, explain them in simple terms. If you're unsure about specific platform features, acknowledge this and suggest they explore the interface or contact support.`;
+6. **Key Features:**
+   - Dashboard to view all uploaded certificates
+   - Download certificates in PDF, HTML, JSON, or original formats
+   - Generate QR codes for verification
+   - AI-powered certificate analysis with confidence scoring
+   - Blockchain-based immutable storage
+   - Career-specific filtering and management
+
+7. **Security Features:**
+   - Time-window forward and backward unique codes for each session
+   - Codes are non-reusable and time-bound (30 minutes)
+   - Prevents replay attacks and ensures authentic user sessions
+   - Each upload requires valid security codes
+   - Session tracking and monitoring
+
+8. **Common Questions & Answers:**
+
+**Q: "How do I upload a certificate?"**
+A: 1. Go to Upload page → 2. Choose Internship/Job toggle → 3. Fill career details → 4. Enter certificate information → 5. Upload file → 6. Wait for AI analysis → 7. Save to dashboard
+
+**Q: "What are forward & backward security codes?"**
+A: These are advanced security features that prevent replay attacks. Each session generates unique forward and backward codes that are time-limited (30 minutes), non-reusable, and blockchain-verified before any operation.
+
+**Q: "How do I apply my Internship/Job details for verification?"**
+A: Use the career toggle on the upload page to select Internship or Job mode. Fill in position, company, dates, skills, and achievements. This creates separate verification records for different career purposes.
+
+**Q: "How do I verify a certificate?"**
+A: Go to Verify page → Enter the 64-character hash → Click Verify → View results showing authenticity, confidence level, and blockchain details.
+
+Always be helpful, concise, and focus on practical guidance. Explain technical concepts in simple terms. If users ask about specific platform features, provide step-by-step instructions.`;
 
 // Rate limiting (simple in-memory store)
 const rateLimitStore = new Map();
-const RATE_LIMIT = 15; // requests per minute (increased for free APIs)
+const RATE_LIMIT = 20; // requests per minute
 const RATE_WINDOW = 60 * 1000; // 1 minute
 
 const checkRateLimit = (ip) => {
@@ -84,36 +95,44 @@ const checkRateLimit = (ip) => {
   return true;
 };
 
-// Free AI API Providers
+// Free AI API Providers with enhanced error handling
 class AIProviderManager {
   constructor() {
     this.providers = [
       {
         name: 'Groq',
         enabled: !!process.env.GROQ_API_KEY,
+        priority: 1,
         call: this.callGroq.bind(this)
       },
       {
         name: 'Google AI Studio',
         enabled: !!process.env.GOOGLE_AI_API_KEY,
+        priority: 2,
         call: this.callGoogleAI.bind(this)
       },
       {
         name: 'Hugging Face',
         enabled: !!process.env.HUGGINGFACE_API_KEY,
+        priority: 3,
         call: this.callHuggingFace.bind(this)
       },
       {
         name: 'Together AI',
         enabled: !!process.env.TOGETHER_API_KEY,
+        priority: 4,
         call: this.callTogetherAI.bind(this)
       },
       {
         name: 'Cohere',
         enabled: !!process.env.COHERE_API_KEY,
+        priority: 5,
         call: this.callCohere.bind(this)
       }
     ];
+
+    // Sort by priority
+    this.providers.sort((a, b) => a.priority - b.priority);
   }
 
   async callGroq(messages) {
@@ -124,9 +143,9 @@ class AIProviderManager {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant', // Free model
+        model: 'llama-3.1-8b-instant',
         messages: messages,
-        max_tokens: 500,
+        max_tokens: 800,
         temperature: 0.7,
       }),
     });
@@ -158,7 +177,7 @@ class AIProviderManager {
           }]
         }],
         generationConfig: {
-          maxOutputTokens: 500,
+          maxOutputTokens: 800,
           temperature: 0.7,
         }
       }),
@@ -173,7 +192,6 @@ class AIProviderManager {
   }
 
   async callHuggingFace(messages) {
-    // Use a free model like Microsoft DialoGPT
     const userMessage = messages[messages.length - 1].content;
     
     const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-large', {
@@ -185,7 +203,7 @@ class AIProviderManager {
       body: JSON.stringify({
         inputs: userMessage,
         parameters: {
-          max_length: 500,
+          max_length: 800,
           temperature: 0.7,
         }
       }),
@@ -207,9 +225,9 @@ class AIProviderManager {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', // Free model
+        model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
         messages: messages,
-        max_tokens: 500,
+        max_tokens: 800,
         temperature: 0.7,
       }),
     });
@@ -233,10 +251,10 @@ class AIProviderManager {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'command-r', // Free model
+        model: 'command-r',
         message: userMessage,
         preamble: systemContext,
-        max_tokens: 500,
+        max_tokens: 800,
         temperature: 0.7,
       }),
     });
@@ -256,14 +274,17 @@ class AIProviderManager {
       throw new Error('No AI providers configured');
     }
 
-    // Try providers in order until one succeeds
+    // Try providers in priority order until one succeeds
     for (const provider of enabledProviders) {
       try {
-        console.log(`Trying ${provider.name}...`);
+        console.log(`🤖 Trying ${provider.name}...`);
         const response = await provider.call(messages);
         if (response && response.trim()) {
           console.log(`✅ ${provider.name} succeeded`);
-          return response.trim();
+          return {
+            content: response.trim(),
+            provider: provider.name
+          };
         }
       } catch (error) {
         console.log(`❌ ${provider.name} failed:`, error.message);
@@ -278,6 +299,7 @@ class AIProviderManager {
     return this.providers.map(p => ({
       name: p.name,
       enabled: p.enabled,
+      priority: p.priority,
       configured: p.enabled
     }));
   }
@@ -297,9 +319,9 @@ router.post('/', async (req, res) => {
       });
     }
 
-    if (message.length > 1000) {
+    if (message.length > 2000) {
       return res.status(400).json({ 
-        error: 'Message too long. Please keep messages under 1000 characters.' 
+        error: 'Message too long. Please keep messages under 2000 characters.' 
       });
     }
 
@@ -323,7 +345,7 @@ router.post('/', async (req, res) => {
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
       // Include recent conversation history for context
-      ...conversationHistory.slice(-4).map(msg => ({
+      ...conversationHistory.slice(-6).map(msg => ({
         role: msg.role,
         content: msg.content
       })),
@@ -331,16 +353,17 @@ router.post('/', async (req, res) => {
     ];
 
     // Try to get response from AI providers
-    const response = await aiManager.generateResponse(messages);
+    const result = await aiManager.generateResponse(messages);
 
-    if (!response) {
+    if (!result.content) {
       throw new Error('No response generated');
     }
 
     res.json({ 
-      response: response,
+      response: result.content,
+      provider: result.provider,
       timestamp: new Date().toISOString(),
-      provider: 'Multi-Provider AI'
+      providersAvailable: enabledProviders.length
     });
 
   } catch (error) {
@@ -361,7 +384,8 @@ router.post('/', async (req, res) => {
 
     // Generic error response
     res.status(500).json({ 
-      error: 'Sorry, I encountered an error. Please try again or contact support if the problem persists.' 
+      error: 'Sorry, I encountered an error. Please try again or contact support if the problem persists.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -374,7 +398,21 @@ router.get('/health', (req, res) => {
   res.json({ 
     status: hasEnabledProvider ? 'OK' : 'No providers configured',
     providers: providerStatus,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    rateLimitInfo: {
+      limit: RATE_LIMIT,
+      window: RATE_WINDOW
+    }
+  });
+});
+
+// GET /api/chatbot/providers - Get available providers
+router.get('/providers', (req, res) => {
+  const providerStatus = aiManager.getStatus();
+  res.json({
+    providers: providerStatus,
+    total: providerStatus.length,
+    enabled: providerStatus.filter(p => p.enabled).length
   });
 });
 

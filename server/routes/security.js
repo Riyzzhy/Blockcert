@@ -1,7 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
@@ -100,6 +99,40 @@ function cleanupExpiredSessions() {
   }
 }
 
+// Refresh security codes
+function refreshSecurityCodes(sessionId) {
+  const session = sessions.get(sessionId);
+  if (!session || session.isUsed || new Date() > session.expiresAt) {
+    return null;
+  }
+
+  // Generate new codes for the same session
+  const timestamp = Date.now();
+  const newExpiresAt = new Date(timestamp + SESSION_DURATION);
+
+  const forwardSeed = `${sessionId}-${timestamp}-${session.userId || 'anonymous'}-forward-refresh`;
+  const newForwardCode = crypto.createHash('sha256').update(forwardSeed + SECRET_KEY).digest('hex');
+
+  const backwardSeed = `${sessionId}-${timestamp}-${session.userId || 'anonymous'}-backward-refresh`;
+  const newBackwardCode = crypto.createHash('sha256').update(backwardSeed + SECRET_KEY).digest('hex');
+
+  // Update session
+  session.forwardCode = newForwardCode;
+  session.backwardCode = newBackwardCode;
+  session.expiresAt = newExpiresAt;
+  session.isUsed = false;
+
+  sessions.set(sessionId, session);
+
+  return {
+    forwardCode: newForwardCode,
+    backwardCode: newBackwardCode,
+    sessionId,
+    expiresAt: newExpiresAt,
+    userId: session.userId
+  };
+}
+
 // POST /api/security/generate - Generate new security codes
 router.post('/generate', securityLimiter, (req, res) => {
   try {
@@ -109,23 +142,10 @@ router.post('/generate', securityLimiter, (req, res) => {
 
     const securityCodes = generateSecurityCodes(userId, ipAddress, userAgent);
 
-    // Generate JWT token with security codes
-    const token = jwt.sign(
-      {
-        sessionId: securityCodes.sessionId,
-        forwardCode: securityCodes.forwardCode,
-        backwardCode: securityCodes.backwardCode,
-        expiresAt: securityCodes.expiresAt,
-        userId: securityCodes.userId
-      },
-      SECRET_KEY,
-      { expiresIn: '30m' }
-    );
-
     res.json({
       securityCodes,
-      token,
-      expiresIn: SESSION_DURATION
+      expiresIn: SESSION_DURATION,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
@@ -159,7 +179,8 @@ router.post('/validate', securityLimiter, (req, res) => {
     res.json({ 
       valid: true,
       message: 'Security codes validated successfully',
-      sessionId
+      sessionId,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
@@ -170,50 +191,48 @@ router.post('/validate', securityLimiter, (req, res) => {
   }
 });
 
+// POST /api/security/refresh - Refresh security codes
+router.post('/refresh', securityLimiter, (req, res) => {
+  try {
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ 
+        error: 'Session ID required' 
+      });
+    }
+
+    const newCodes = refreshSecurityCodes(sessionId);
+
+    if (!newCodes) {
+      return res.status(404).json({ 
+        error: 'Session not found or expired' 
+      });
+    }
+
+    res.json({
+      securityCodes: newCodes,
+      message: 'Security codes refreshed successfully',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Security refresh error:', error);
+    res.status(500).json({ 
+      error: 'Failed to refresh security codes' 
+    });
+  }
+});
+
 // GET /api/security/status - Get security status
 router.get('/status', (req, res) => {
   cleanupExpiredSessions();
   
   res.json({
     activeSessions: sessions.size,
-    timestamp: new Date().toISOString(),
-    sessionDuration: SESSION_DURATION
+    sessionDuration: SESSION_DURATION,
+    timestamp: new Date().toISOString()
   });
-});
-
-// POST /api/security/verify-token - Verify JWT token
-router.post('/verify-token', (req, res) => {
-  try {
-    const { token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({ error: 'Token required' });
-    }
-
-    const decoded = jwt.verify(token, SECRET_KEY);
-    
-    // Check if session still exists and is valid
-    const session = sessions.get(decoded.sessionId);
-    if (!session || session.isUsed || new Date() > session.expiresAt) {
-      return res.status(401).json({ 
-        error: 'Token invalid or expired',
-        valid: false 
-      });
-    }
-
-    res.json({ 
-      valid: true,
-      sessionId: decoded.sessionId,
-      expiresAt: decoded.expiresAt,
-      userId: decoded.userId
-    });
-
-  } catch (error) {
-    res.status(401).json({ 
-      error: 'Invalid token',
-      valid: false 
-    });
-  }
 });
 
 export default router;

@@ -1,21 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Clock, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Shield, Clock, Lock, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { SecurityCodes } from '@/lib/security';
+import { Button } from '@/components/ui/button';
+import { SecurityCodes, SecurityManager } from '@/lib/security';
 
 interface SecurityIndicatorProps {
   securityCodes?: SecurityCodes;
+  onRefresh?: (newCodes: SecurityCodes) => void;
   className?: string;
 }
 
 export const SecurityIndicator: React.FC<SecurityIndicatorProps> = ({ 
   securityCodes, 
+  onRefresh,
   className = '' 
 }) => {
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [isExpired, setIsExpired] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (!securityCodes) return;
@@ -59,6 +63,30 @@ export const SecurityIndicator: React.FC<SecurityIndicatorProps> = ({
     }
   };
 
+  const handleRefresh = async () => {
+    if (!securityCodes || !onRefresh) return;
+    
+    setIsRefreshing(true);
+    try {
+      const newCodes = SecurityManager.refreshSecurityCodes(securityCodes.sessionId);
+      if (newCodes) {
+        onRefresh(newCodes);
+      } else {
+        // Generate completely new codes
+        const freshCodes = SecurityManager.generateSecurityCodes(
+          securityCodes.userId,
+          window.location.hostname,
+          navigator.userAgent
+        );
+        onRefresh(freshCodes);
+      }
+    } catch (error) {
+      console.error('Failed to refresh security codes:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const security = getSecurityLevel();
   const SecurityIcon = security.icon;
 
@@ -89,9 +117,22 @@ export const SecurityIndicator: React.FC<SecurityIndicatorProps> = ({
               <SecurityIcon className={`w-5 h-5 ${security.color}`} />
               <span className="font-medium">{security.level}</span>
             </div>
-            <Badge variant={isExpired ? 'destructive' : 'secondary'}>
-              {isExpired ? 'Expired' : 'Active'}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={isExpired ? 'destructive' : 'secondary'}>
+                {isExpired ? 'Expired' : 'Active'}
+              </Badge>
+              {onRefresh && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="h-6 w-6 p-0"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Time Remaining */}

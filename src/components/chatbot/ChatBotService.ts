@@ -13,6 +13,11 @@ interface QuickAction {
 export class ChatBotService {
   private static instance: ChatBotService;
   private conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  private baseUrl: string;
+
+  constructor() {
+    this.baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  }
 
   static getInstance(): ChatBotService {
     if (!ChatBotService.instance) {
@@ -26,8 +31,8 @@ export class ChatBotService {
     this.conversationHistory.push({ role: 'user', content: message });
 
     try {
-      // Try to call the backend chatbot API if available
-      const response = await fetch('/api/chatbot', {
+      // Try to call the backend chatbot API
+      const response = await fetch(`${this.baseUrl}/api/chatbot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -46,16 +51,18 @@ export class ChatBotService {
           content: data.response,
           quickActions: this.generateQuickActions(message, data.response)
         };
+      } else {
+        throw new Error(`API Error: ${response.status}`);
       }
     } catch (error) {
       console.log('Backend chatbot not available, using local responses');
+      
+      // Fallback to local responses
+      const localResponse = this.generateLocalResponse(message);
+      this.conversationHistory.push({ role: 'assistant', content: localResponse.content });
+      
+      return localResponse;
     }
-
-    // Fallback to local responses
-    const localResponse = this.generateLocalResponse(message);
-    this.conversationHistory.push({ role: 'assistant', content: localResponse.content });
-    
-    return localResponse;
   }
 
   private generateQuickActions(userMessage: string, botResponse: string): QuickAction[] {
@@ -139,7 +146,7 @@ export class ChatBotService {
     // Upload related
     if (msg.includes('upload') || msg.includes('add certificate')) {
       return {
-        content: "I'll help you upload a certificate! You can upload PDF, PNG, JPG, or JPEG files. Our AI will analyze the document for authenticity and store it securely on the blockchain.",
+        content: "📤 **How to Upload a Certificate:**\n\n1. **Go to Upload Page** - Click 'Upload' in navigation\n2. **Choose Career Type** - Toggle between Internship/Job\n3. **Fill Details** - Enter certificate and career information\n4. **Security Codes** - Auto-generated for protection\n5. **Upload File** - Drag & drop or click to select\n6. **AI Analysis** - Wait for verification results\n7. **Save to Dashboard** - Store verified certificate\n\n**Supported formats:** PDF, PNG, JPG, JPEG (max 10MB)\n**Security:** Time-window codes protect each upload\n**Career tracking:** Separate records for internships/jobs",
         quickActions: [
           { label: 'Go to Upload', action: 'navigate', value: '/upload' },
           { label: 'File Requirements', action: 'message', value: 'What are the file requirements?' }
@@ -150,7 +157,7 @@ export class ChatBotService {
     // Verification related
     if (msg.includes('verify') || msg.includes('check')) {
       return {
-        content: "You can verify any certificate using its blockchain hash. This will show you the authenticity, confidence level, and all verification details stored on the blockchain.",
+        content: "🔍 **How to Verify a Certificate:**\n\n1. **Get the Hash** - From certificate owner or QR code\n2. **Go to Verify Page** - Click 'Verify' in navigation\n3. **Enter Hash** - Paste the 64-character hash\n4. **Click Verify** - System checks blockchain records\n5. **View Results** - See authenticity and details\n\n**What you'll see:**\n• ✅ Verification status (Valid/Invalid)\n• 📊 Confidence level and AI analysis\n• 🔗 Blockchain transaction details\n• 📱 QR code for sharing\n• 📄 Certificate information\n\n**Public verification** - Anyone can verify with just the hash!",
         quickActions: [
           { label: 'Verify Now', action: 'navigate', value: '/verify' },
           { label: 'How Verification Works', action: 'message', value: 'Explain the verification process' }
@@ -161,7 +168,7 @@ export class ChatBotService {
     // Dashboard related
     if (msg.includes('dashboard') || msg.includes('my certificates')) {
       return {
-        content: "Your dashboard shows all uploaded certificates, their verification status, and allows you to download them in various formats (PDF, HTML, JSON) or generate QR codes.",
+        content: "📊 **Your Dashboard Features:**\n\n**Certificate Management:**\n• View all uploaded certificates\n• Filter by status (verified/pending/failed)\n• Filter by career type (internship/job)\n• Search by name, institution, or details\n\n**Download Options:**\n• 📄 PDF Certificate (printable)\n• 🌐 HTML Certificate (web-friendly)\n• 📋 JSON Data (raw information)\n• 📁 Original File (with BlockCert stamp)\n\n**Additional Features:**\n• 📱 Generate QR codes for sharing\n• 👁️ View detailed certificate information\n• 🗑️ Delete certificates\n• 📈 View statistics and analytics",
         quickActions: [
           { label: 'Open Dashboard', action: 'navigate', value: '/dashboard' },
           { label: 'Download Options', action: 'message', value: 'What download formats are available?' }
@@ -169,10 +176,21 @@ export class ChatBotService {
       };
     }
 
+    // File formats and requirements
+    if (msg.includes('format') || msg.includes('file') || msg.includes('requirement')) {
+      return {
+        content: "📁 **File Requirements:**\n\n**Supported Formats:**\n• 📄 PDF - Most common for certificates\n• 🖼️ Images - PNG, JPG, JPEG\n\n**File Specifications:**\n• 📏 Maximum size: 10MB per file\n• 🔍 AI analyzes all formats automatically\n• 🛡️ Secure upload with encryption\n• ⚡ Fast processing and verification\n\n**Best Practices:**\n• Use high-resolution scans\n• Ensure text is clearly readable\n• Include all certificate details\n• Avoid heavily compressed images",
+        quickActions: [
+          { label: 'Upload Now', action: 'navigate', value: '/upload' },
+          { label: 'Security Features', action: 'message', value: 'What are forward & backward security codes?' }
+        ]
+      };
+    }
+
     // How it works
     if (msg.includes('how') && (msg.includes('work') || msg.includes('process'))) {
       return {
-        content: "BlockCert works in 4 simple steps:\n\n1. **Upload** - Upload your certificate (PDF/Image)\n2. **AI Analysis** - Our AI scans for authenticity indicators\n3. **Blockchain Storage** - Document hash is stored immutably\n4. **Verification** - Get a verified certificate with QR code\n\nEach step ensures maximum security and authenticity!",
+        content: "⚙️ **How BlockCert Works:**\n\n**Step 1: Secure Upload**\n• Generate time-window security codes\n• Choose internship or job application\n• Fill certificate and career details\n• Upload document with AI analysis\n\n**Step 2: AI Verification**\n• Document format analysis\n• Certificate structure validation\n• Content verification\n• Metadata validation\n• Security codes verification\n\n**Step 3: Blockchain Storage**\n• Generate unique hash for document\n• Store immutable record on blockchain\n• Create verification transaction\n• Generate QR code for sharing\n\n**Step 4: Access & Share**\n• Download in multiple formats\n• Share verification links\n• Manage from dashboard\n• Track career applications",
         quickActions: [
           { label: 'Try Upload', action: 'navigate', value: '/upload' },
           { label: 'Try Verification', action: 'navigate', value: '/verify' }
@@ -180,26 +198,15 @@ export class ChatBotService {
       };
     }
 
-    // File formats
-    if (msg.includes('format') || msg.includes('file type')) {
-      return {
-        content: "We support these file formats:\n\n📄 **PDF** - Most common for certificates\n🖼️ **Images** - PNG, JPG, JPEG\n📏 **Size Limit** - Maximum 10MB per file\n\nAll files are processed automatically with AI analysis for authenticity detection.",
-        quickActions: [
-          { label: 'Upload Now', action: 'navigate', value: '/upload' },
-          { label: 'More Questions', action: 'message', value: 'I have more questions' }
-        ]
-      };
-    }
-
     // Default response
     return {
-      content: "I'm here to help with BlockCert! I can assist you with:\n\n📤 **Certificate Uploads** - Upload and verify documents with advanced security\n🔍 **Hash Verification** - Check certificate authenticity\n📊 **Dashboard Management** - View and download certificates\n💼 **Career Applications** - Internship/Job toggle and tracking\n🔒 **Security Features** - Forward/backward codes and time-window protection\n❓ **General Questions** - Platform features and pricing\n\nWhat would you like to do?",
+      content: "👋 **Welcome to BlockCert AI Assistant!**\n\nI can help you with:\n\n🔒 **Advanced Security**\n• Forward/backward time-window codes\n• Blockchain protection and verification\n• Replay attack prevention\n\n💼 **Career Management**\n• Internship certificate uploads\n• Job application document tracking\n• Skills and achievements management\n\n📤 **Smart Uploads**\n• AI-powered document analysis\n• Multi-format support (PDF, images)\n• Real-time authenticity checking\n\n🔍 **Instant Verification**\n• Hash-based certificate checking\n• QR code generation and sharing\n• Public verification links\n\n**What would you like to do?**",
       quickActions: [
         { label: 'Upload Certificate', action: 'navigate', value: '/upload' },
         { label: 'Verify Document', action: 'navigate', value: '/verify' },
         { label: 'View Dashboard', action: 'navigate', value: '/dashboard' },
         { label: 'Security Info', action: 'message', value: 'What are forward & backward security codes?' },
-        { label: 'Learn More', action: 'external', value: '#about' }
+        { label: 'Career Features', action: 'message', value: 'How do I apply my Internship/Job details for verification?' }
       ]
     };
   }

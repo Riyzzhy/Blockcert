@@ -15,7 +15,10 @@ import {
   GraduationCap,
   Lock,
   HelpCircle,
-  ExternalLink
+  ExternalLink,
+  FileText,
+  QrCode,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +69,7 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
       // Send welcome message when chatbot opens for the first time
       setTimeout(() => {
         addBotMessage(
-          "👋 Welcome to BlockCert! I'm your AI assistant for:\n\n🔒 **Advanced Security** - Time-window codes & blockchain protection\n💼 **Career Applications** - Internship/Job certificate management\n📤 **Smart Uploads** - AI-powered document verification\n🔍 **Instant Verification** - Real-time authenticity checking\n\nHow can I help you today?",
+          "👋 **Welcome to BlockCert AI Assistant!**\n\nI'm here to help you with:\n\n🔒 **Advanced Security** - Time-window codes & blockchain protection\n💼 **Career Applications** - Internship/Job certificate management\n📤 **Smart Uploads** - AI-powered document verification\n🔍 **Instant Verification** - Real-time authenticity checking\n\n**Popular Questions:**\n• How do I upload a certificate?\n• What are forward & backward security codes?\n• How do I apply my Internship/Job details?\n• How do I verify a certificate?\n\n**What would you like to know?**",
           getWelcomeQuickActions()
         );
       }, 500);
@@ -78,7 +81,7 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
     { label: 'Verify Document', action: 'navigate', value: '/verify', icon: Search },
     { label: 'View Dashboard', action: 'navigate', value: '/dashboard', icon: LayoutDashboard },
     { label: 'Security Features', action: 'message', value: 'What are forward & backward security codes?', icon: Lock },
-    { label: 'How it Works', action: 'message', value: 'How does BlockCert work?', icon: HelpCircle }
+    { label: 'Career Features', action: 'message', value: 'How do I apply my Internship/Job details for verification?', icon: Briefcase }
   ];
 
   const addBotMessage = (content: string, quickActions?: QuickAction[]) => {
@@ -217,8 +220,8 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
       animate="visible"
       exit="exit"
     >
-      <Card className={`w-96 shadow-2xl border-0 overflow-hidden glass-effect ${
-        isMinimized ? 'h-16' : 'h-[500px]'
+      <Card className={`w-96 shadow-2xl border-0 overflow-hidden chatbot-glass ${
+        isMinimized ? 'h-16' : 'h-[600px]'
       } transition-all duration-300 ease-in-out`}>
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-primary-glow p-4 text-primary-foreground">
@@ -228,9 +231,9 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
                 <Bot className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-semibold">BlockCert Assistant</h3>
+                <h3 className="font-semibold">BlockCert AI Assistant</h3>
                 <p className="text-xs opacity-90">
-                  {isTyping ? 'Typing...' : 'Online'}
+                  {isTyping ? 'Typing...' : 'Online • Ready to help'}
                 </p>
               </div>
             </div>
@@ -267,7 +270,7 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="flex flex-col h-[436px]"
+              className="flex flex-col h-[536px]"
             >
               {/* Messages */}
               <ScrollArea className="flex-1 p-4">
@@ -280,27 +283,27 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
                       animate="visible"
                       className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-[80%] ${
+                      <div className={`max-w-[85%] ${
                         message.sender === 'user' 
                           ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted text-muted-foreground'
+                          : 'bg-muted text-foreground'
                       } rounded-lg p-3 shadow-sm`}>
                         <div className="flex items-start gap-2">
                           {message.sender === 'bot' && (
-                            <Bot className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                            <Bot className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
                           )}
                           <div className="flex-1">
-                            <p className="text-sm whitespace-pre-line">{message.content}</p>
+                            <p className="text-sm whitespace-pre-line leading-relaxed">{message.content}</p>
                             
                             {/* Quick Actions */}
                             {message.quickActions && message.quickActions.length > 0 && (
                               <div className="mt-3 space-y-2">
                                 <div className="grid grid-cols-1 gap-2">
-                                  {message.quickActions.map((action, index) => (
+                                  {message.quickActions.slice(0, 4).map((action, index) => (
                                     <motion.button
                                       key={index}
                                       onClick={() => handleQuickAction(action)}
-                                      className="flex items-center gap-2 p-2 rounded-md bg-background/50 hover:bg-background/80 text-foreground text-xs transition-colors duration-200 border border-border/50"
+                                      className="flex items-center gap-2 p-2 rounded-md bg-background/50 hover:bg-background/80 text-foreground text-xs transition-colors duration-200 border border-border/50 hover:border-primary/50"
                                       whileHover={{ scale: 1.02 }}
                                       whileTap={{ scale: 0.98 }}
                                     >
@@ -310,6 +313,27 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
                                     </motion.button>
                                   ))}
                                 </div>
+                                {message.quickActions.length > 4 && (
+                                  <details className="text-xs">
+                                    <summary className="cursor-pointer text-primary hover:text-primary/80">
+                                      Show {message.quickActions.length - 4} more options...
+                                    </summary>
+                                    <div className="grid grid-cols-1 gap-2 mt-2">
+                                      {message.quickActions.slice(4).map((action, index) => (
+                                        <motion.button
+                                          key={index + 4}
+                                          onClick={() => handleQuickAction(action)}
+                                          className="flex items-center gap-2 p-2 rounded-md bg-background/50 hover:bg-background/80 text-foreground text-xs transition-colors duration-200 border border-border/50"
+                                          whileHover={{ scale: 1.02 }}
+                                          whileTap={{ scale: 0.98 }}
+                                        >
+                                          {action.icon && <action.icon className="w-3 h-3" />}
+                                          {action.label}
+                                        </motion.button>
+                                      ))}
+                                    </div>
+                                  </details>
+                                )}
                               </div>
                             )}
                           </div>
@@ -335,20 +359,21 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
                       >
                         <div className="bg-muted text-muted-foreground rounded-lg p-3 shadow-sm">
                           <div className="flex items-center gap-2">
-                            <Bot className="w-4 h-4" />
+                            <Bot className="w-4 h-4 text-primary" />
+                            <span className="text-xs">AI is thinking</span>
                             <div className="flex gap-1">
                               <motion.div
-                                className="w-2 h-2 bg-current rounded-full"
+                                className="w-2 h-2 bg-primary rounded-full"
                                 animate={{ opacity: [0.4, 1, 0.4] }}
                                 transition={{ duration: 1, repeat: Infinity, delay: 0 }}
                               />
                               <motion.div
-                                className="w-2 h-2 bg-current rounded-full"
+                                className="w-2 h-2 bg-primary rounded-full"
                                 animate={{ opacity: [0.4, 1, 0.4] }}
                                 transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
                               />
                               <motion.div
-                                className="w-2 h-2 bg-current rounded-full"
+                                className="w-2 h-2 bg-primary rounded-full"
                                 animate={{ opacity: [0.4, 1, 0.4] }}
                                 transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
                               />
@@ -385,7 +410,7 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
                 </div>
                 
                 {/* Quick Navigation Buttons */}
-                {messages.length === 0 && (
+                {messages.length <= 1 && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -419,15 +444,39 @@ const ChatBotWindow: React.FC<ChatBotWindowProps> = ({ isOpen, onClose }) => {
                       <LayoutDashboard className="w-3 h-3 mr-1" />
                       Dashboard
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuickAction({ label: 'Security', action: 'message', value: 'What are forward & backward security codes?', icon: Lock })}
-                      className="text-xs"
-                    >
-                      <Lock className="w-3 h-3 mr-1" />
-                      Security
-                    </Button>
+                  </motion.div>
+                )}
+                
+                {/* Suggested Questions */}
+                {messages.length === 1 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1 }}
+                    className="mt-3 space-y-2"
+                  >
+                    <p className="text-xs text-muted-foreground">Try asking:</p>
+                    <div className="grid grid-cols-1 gap-1">
+                      {[
+                        'How do I upload a certificate?',
+                        'What are forward & backward security codes?',
+                        'How do I apply my Internship/Job details?',
+                        'How do I verify a certificate?'
+                      ].map((question, index) => (
+                        <Button
+                          key={index}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setInputValue(question);
+                            setTimeout(handleSendMessage, 100);
+                          }}
+                          className="text-xs justify-start h-auto py-1 px-2 text-muted-foreground hover:text-foreground"
+                        >
+                          "{question}"
+                        </Button>
+                      ))}
+                    </div>
                   </motion.div>
                 )}
               </div>
